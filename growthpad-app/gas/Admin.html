@@ -54,16 +54,20 @@
         return;
       }
       var rowsHtml = preview.rows.map(function (row) {
+        var strengths = row['強み'] || [];
+        var strengthBadges = strengths.length > 0
+          ? strengths.map(function (s) { return '<span class="type-badge">' + escapeHtml(s.competency) + '</span>'; }).join(' ')
+          : '<span class="empty">-</span>';
         return '<tr>' +
           '<td>' + escapeHtml(row['氏名']) + '</td>' +
           '<td>' + escapeHtml(row['クラス']) + '</td>' +
-          '<td>' + escapeHtml(row['自己効力感']) + '</td>' +
-          '<td>' + escapeHtml(row['学習時間']) + '</td>' +
-          '<td><span class="type-badge">' + escapeHtml(row['タイプ判定']) + '</span></td>' +
+          '<td>' + escapeHtml(row['学習時間(分)']) + '</td>' +
+          '<td>' + escapeHtml(row['講義完了数']) + '</td>' +
+          '<td>' + strengthBadges + '</td>' +
           '</tr>';
       }).join('');
       el.innerHTML = '<p>現在 ' + preview.rows.length + ' 名分のデータが統合されています。</p>' +
-        '<table><thead><tr><th>氏名</th><th>クラス</th><th>自己効力感</th><th>学習時間(分)</th><th>タイプ判定</th></tr></thead>' +
+        '<table><thead><tr><th>氏名</th><th>クラス</th><th>学習時間(分)</th><th>講義完了数</th><th>強み（特に高いコンピテンシー）</th></tr></thead>' +
         '<tbody>' + rowsHtml + '</tbody></table>';
     }
 

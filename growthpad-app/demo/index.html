@@ -47,9 +47,13 @@
   .stars { font-size: 28px; letter-spacing: 6px; cursor: pointer; }
   .stars span { color: #ddd; }
   .stars span.active { color: #f0a72e; }
-  .quadrant { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+  .quadrant { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 16px; }
   .quadrant div { background: #f8f9f8; border-radius: 8px; padding: 10px; font-size: 12px; }
   .quadrant .qcount { font-size: 20px; font-weight: 700; color: var(--main); }
+  .strength-card { border: 1px solid #eee; border-radius: 10px; padding: 14px; margin-top: 10px; }
+  .strength-card .competency { font-weight: 700; color: #256a4a; }
+  .strength-card ul { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: #444; }
+  .strength-card li { margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -92,7 +96,7 @@
       <div class="quadrant" id="quadrantSummary"></div>
       <div style="overflow-x:auto">
         <table id="dbTable">
-          <thead><tr><th>氏名</th><th>クラス</th><th>自己効力感</th><th>学習時間(分)</th><th>タイプ判定</th></tr></thead>
+          <thead><tr><th>氏名</th><th>クラス</th><th>学習時間(分)</th><th>講義完了数</th><th>強み（特に高いコンピテンシー）</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -240,24 +244,30 @@
     var db = loadDb();
     var tbody = document.querySelector('#dbTable tbody');
     tbody.innerHTML = '';
-    var counts = {};
+    var competencyCounts = {};
     db.integrated.forEach(function (row) {
+      var strengths = row['強み'] || [];
+      var strengthBadges = strengths.length > 0
+        ? strengths.map(function (s) { return '<span class="type-badge">' + escapeHtml(s.competency) + '</span>'; }).join(' ')
+        : '-';
       var tr = document.createElement('tr');
       tr.innerHTML =
         '<td>' + escapeHtml(row['氏名']) + '</td>' +
         '<td>' + escapeHtml(row['クラス']) + '</td>' +
-        '<td>' + escapeHtml(row['自己効力感']) + '</td>' +
-        '<td>' + escapeHtml(row['学習時間']) + '</td>' +
-        '<td><span class="type-badge">' + escapeHtml(row['タイプ判定']) + '</span></td>';
+        '<td>' + escapeHtml(row['学習時間(分)']) + '</td>' +
+        '<td>' + escapeHtml(row['講義完了数']) + '</td>' +
+        '<td>' + strengthBadges + '</td>';
       tbody.appendChild(tr);
-      counts[row['タイプ判定']] = (counts[row['タイプ判定']] || 0) + 1;
+      strengths.forEach(function (s) {
+        competencyCounts[s.competency] = (competencyCounts[s.competency] || 0) + 1;
+      });
     });
 
     var quadEl = document.getElementById('quadrantSummary');
     quadEl.innerHTML = '';
-    Object.keys(counts).forEach(function (type) {
+    Object.keys(competencyCounts).forEach(function (competency) {
       var div = document.createElement('div');
-      div.innerHTML = '<div class="qcount">' + counts[type] + '名</div>' + type;
+      div.innerHTML = '<div class="qcount">' + competencyCounts[competency] + '名</div>' + escapeHtml(competency);
       quadEl.appendChild(div);
     });
   }
@@ -286,12 +296,21 @@
       el.innerHTML = 'データがありません。まず管理者画面でCSVを取り込んでください。';
       return;
     }
+    var strengths = row['強み'] || [];
+    var strengthsHtml = strengths.length > 0
+      ? strengths.map(function (s) {
+          var commentsHtml = (s.comments || []).map(function (c) { return '<li>' + escapeHtml(c) + '</li>'; }).join('');
+          return '<div class="strength-card"><div class="competency">' + escapeHtml(s.competency) + '</div>' +
+            (commentsHtml ? '<ul>' + commentsHtml + '</ul>' : '') + '</div>';
+        }).join('')
+      : '<p class="lead">まだ強みのデータが登録されていません。</p>';
+
     el.innerHTML =
       '<div class="profile-row"><span class="label">氏名</span><span class="value">' + escapeHtml(row['氏名']) + '</span></div>' +
       '<div class="profile-row"><span class="label">クラス</span><span class="value">' + escapeHtml(row['クラス']) + '</span></div>' +
-      '<div class="profile-row"><span class="label">学びタイプ</span><span class="value"><span class="type-badge">' + escapeHtml(row['タイプ判定']) + '</span></span></div>' +
-      '<div class="profile-row"><span class="label">非認知スコア（自己効力感）</span><span class="value">' + escapeHtml(row['自己効力感']) + '</span></div>' +
-      '<div class="profile-row"><span class="label">今週の学習時間</span><span class="value">' + escapeHtml(row['学習時間']) + ' 分</span></div>';
+      '<div class="profile-row"><span class="label">今週の学習時間</span><span class="value">' + escapeHtml(row['学習時間(分)']) + ' 分</span></div>' +
+      '<div class="profile-row"><span class="label">講義完了数</span><span class="value">' + escapeHtml(row['講義完了数']) + '</span></div>' +
+      '<div style="margin-top:16px"><div class="label" style="margin-bottom:4px">あなたの強み</div>' + strengthsHtml + '</div>';
   }
 
   function initStars() {

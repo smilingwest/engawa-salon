@@ -13,6 +13,10 @@
     .profile-row .label { color: #777; }
     .profile-row .value { font-weight: 600; }
     .type-badge { display: inline-block; background: #e5f4ec; color: #256a4a; padding: 4px 12px; border-radius: 999px; font-weight: 600; }
+    .strength-card { border: 1px solid #eee; border-radius: 10px; padding: 14px; margin-top: 10px; }
+    .strength-card .competency { font-weight: 700; color: #256a4a; }
+    .strength-card ul { margin: 8px 0 0; padding-left: 20px; font-size: 14px; color: #444; }
+    .strength-card li { margin-bottom: 4px; }
     .stars { font-size: 24px; letter-spacing: 4px; cursor: pointer; }
     .stars span { color: #ddd; }
     .stars span.active { color: #f0a72e; }
@@ -67,12 +71,21 @@
         return;
       }
       var d = result.data;
+      var strengths = d['強み'] || [];
+      var strengthsHtml = strengths.length > 0
+        ? strengths.map(function (s) {
+            var commentsHtml = (s.comments || []).map(function (c) { return '<li>' + escapeHtml(c) + '</li>'; }).join('');
+            return '<div class="strength-card"><div class="competency">' + escapeHtml(s.competency) + '</div>' +
+              (commentsHtml ? '<ul>' + commentsHtml + '</ul>' : '') + '</div>';
+          }).join('')
+        : '<p class="lead">まだ強みのデータが登録されていません。</p>';
+
       el.innerHTML =
         '<div class="profile-row"><span class="label">氏名</span><span class="value">' + escapeHtml(d['氏名']) + '</span></div>' +
         '<div class="profile-row"><span class="label">クラス</span><span class="value">' + escapeHtml(d['クラス']) + '</span></div>' +
-        '<div class="profile-row"><span class="label">学びタイプ</span><span class="value"><span class="type-badge">' + escapeHtml(d['タイプ判定']) + '</span></span></div>' +
-        '<div class="profile-row"><span class="label">非認知スコア（自己効力感）</span><span class="value">' + escapeHtml(d['自己効力感']) + '</span></div>' +
-        '<div class="profile-row"><span class="label">今週の学習時間</span><span class="value">' + escapeHtml(d['学習時間']) + ' 分</span></div>';
+        '<div class="profile-row"><span class="label">今週の学習時間</span><span class="value">' + escapeHtml(d['学習時間(分)']) + ' 分</span></div>' +
+        '<div class="profile-row"><span class="label">講義完了数</span><span class="value">' + escapeHtml(d['講義完了数']) + '</span></div>' +
+        '<div style="margin-top:16px"><div class="label" style="margin-bottom:4px">あなたの強み</div>' + strengthsHtml + '</div>';
     }
 
     function escapeHtml(v) {
