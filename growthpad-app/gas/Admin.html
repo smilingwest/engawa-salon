@@ -117,7 +117,11 @@
           renderPreview(preview);
         })
         .withFailureHandler(function (err) {
+          if (requestId !== previewRequestId) return; // 古いレスポンスは無視
           console.error(err);
+          document.getElementById('preview').innerHTML =
+            '<p class="empty" style="color:#a33">⚠ プレビューの取得に失敗しました: ' +
+            escapeHtml(err && err.message ? err.message : err) + '</p>';
         })
         .getIntegratedPreview();
     }
