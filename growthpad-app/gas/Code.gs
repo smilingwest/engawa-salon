@@ -68,17 +68,43 @@ function processCsvUpload(type, csvText) {
   }
 
   const sheetName = type === 'AiGROW' ? SHEET_RAW_AIGROW : SHEET_RAW_STUDYSAPURI;
+  const wantedHeaders = type === 'AiGROW' ? AIGROW_HEADERS : STUDYSAPURI_HEADERS;
   const sheet = getOrCreateSheet_(sheetName);
   sheet.clearContents();
   sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
 
+  const headerMatch = detectHeaderMatch_(rows[0], wantedHeaders);
   const result = mergeData_();
+
+  let message = sheetName + ' を更新し（' + (rows.length - 1) + '件）、' + SHEET_DB_INTEGRATED +
+    ' を再生成しました（統合済み: ' + result.mergedCount + '名）。';
+  if (headerMatch.missing.length > 0) {
+    message += '\n⚠ CSVのヘッダーに見つからなかった項目: ' + headerMatch.missing.join('、') +
+      '\n  実際のCSVの1行目: ' + rows[0].join(' / ');
+  }
+
   return {
     ok: true,
     rows: rows.length - 1,
-    message: sheetName + ' を更新し、' + SHEET_DB_INTEGRATED + ' を再生成しました。',
-    mergedCount: result.mergedCount
+    message: message,
+    mergedCount: result.mergedCount,
+    headerMatch: headerMatch
   };
+}
+
+/** アップロードされたCSVの1行目に、期待するヘッダー名がいくつ見つかったかを調べる。 */
+function detectHeaderMatch_(headerRow, wantedHeaders) {
+  const found = [];
+  const missing = [];
+  wantedHeaders.forEach(function (name) {
+    const idx = headerRow.findIndex(function (h) { return String(h).trim() === name; });
+    if (idx === -1) {
+      missing.push(name);
+    } else {
+      found.push(name);
+    }
+  });
+  return { found: found, missing: missing };
 }
 
 /** シートの2次元配列を「メールアドレスキー -> {ヘッダー名: 値}」に変換する。 */
@@ -177,6 +203,27 @@ function mergeData_() {
   dbSheet.getRange(1, 1, outRows.length, dbHeader.length).setValues(outRows);
 
   return { mergedCount: outRows.length - 1 };
+}
+
+/**
+ * 管理者画面向け: DB_統合データ の全件を返す（先生・管理者は全生徒を見てよいため）。
+ * 生徒用の getStudentData() とは異なり、本人以外のデータも含む点に注意。
+ */
+function getIntegratedPreview() {
+  const ss = getDatabase_();
+  const dbSheet = ss.getSheetByName(SHEET_DB_INTEGRATED);
+  if (!dbSheet || dbSheet.getLastRow() < 1) {
+    return { header: [], rows: [] };
+  }
+
+  const values = dbSheet.getDataRange().getValues();
+  const header = values[0];
+  const rows = values.slice(1).map(function (row) {
+    const record = {};
+    header.forEach(function (h, i) { record[h] = row[i]; });
+    return record;
+  });
+  return { header: header, rows: rows };
 }
 
 /**

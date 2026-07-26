@@ -16,6 +16,11 @@
     #status.ok { display: block; background: #e5f4ec; color: #256a4a; }
     #status.err { display: block; background: #fbe7e7; color: #a33; }
     .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; }
+    th { color: #777; font-weight: 600; }
+    .type-badge { display: inline-block; background: #e5f4ec; color: #256a4a; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+    .empty { color: #999; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -35,7 +40,47 @@
     <div id="status"></div>
   </div>
 
+  <div class="card">
+    <h1>DB_統合データ（プレビュー）</h1>
+    <p class="lead">名寄せ済みマスターデータ。ここに表示されない生徒がいる場合は、CSVの列名が一致していない可能性があります。</p>
+    <div id="preview"><p class="empty">まだデータがありません。上でCSVを取り込んでください。</p></div>
+  </div>
+
   <script>
+    function renderPreview(preview) {
+      var el = document.getElementById('preview');
+      if (!preview || !preview.rows || preview.rows.length === 0) {
+        el.innerHTML = '<p class="empty">DB_統合データ は空です。CSVのヘッダー名がAi GROW/スタディサプリの実際の列名と一致しているかご確認ください。</p>';
+        return;
+      }
+      var rowsHtml = preview.rows.map(function (row) {
+        return '<tr>' +
+          '<td>' + escapeHtml(row['氏名']) + '</td>' +
+          '<td>' + escapeHtml(row['クラス']) + '</td>' +
+          '<td>' + escapeHtml(row['自己効力感']) + '</td>' +
+          '<td>' + escapeHtml(row['学習時間']) + '</td>' +
+          '<td><span class="type-badge">' + escapeHtml(row['タイプ判定']) + '</span></td>' +
+          '</tr>';
+      }).join('');
+      el.innerHTML = '<p>現在 ' + preview.rows.length + ' 名分のデータが統合されています。</p>' +
+        '<table><thead><tr><th>氏名</th><th>クラス</th><th>自己効力感</th><th>学習時間(分)</th><th>タイプ判定</th></tr></thead>' +
+        '<tbody>' + rowsHtml + '</tbody></table>';
+    }
+
+    function escapeHtml(v) {
+      return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function loadPreview() {
+      google.script.run
+        .withSuccessHandler(renderPreview)
+        .withFailureHandler(function (err) {
+          console.error(err);
+        })
+        .getIntegratedPreview();
+    }
     // CSVの文字コードはエクスポート元によって UTF-8 / Shift_JIS のどちらもあり得るため、
     // まず UTF-8 として厳密デコードを試み、失敗したら Shift_JIS にフォールバックする。
     function readAsTextAutoDetect(file) {
@@ -104,12 +149,15 @@
         }
         var summary = results.map(function (r) { return r.message; }).join('\n');
         showStatus('更新完了！\n' + summary, false);
+        loadPreview();
       } catch (err) {
         showStatus('エラー: ' + (err && err.message ? err.message : err), true);
       } finally {
         btn.disabled = false;
       }
     }
+
+    loadPreview();
   </script>
 </body>
 </html>

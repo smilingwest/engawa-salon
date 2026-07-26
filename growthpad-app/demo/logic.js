@@ -43,6 +43,16 @@ var GrowthPadLogic = (function () {
     return map;
   }
 
+  function detectHeaderMatch(headerRow, wantedHeaders) {
+    var found = [];
+    var missing = [];
+    wantedHeaders.forEach(function (name) {
+      var idx = headerRow.indexOf(name);
+      if (idx === -1) { missing.push(name); } else { found.push(name); }
+    });
+    return { found: found, missing: missing };
+  }
+
   function judgeType(selfEfficacy, studyMinutes) {
     var efficacyThreshold = 3.5;
     var studyThreshold = 120;
@@ -88,6 +98,9 @@ var GrowthPadLogic = (function () {
   return {
     parseCsv: parseCsv,
     mergeData: mergeData,
-    judgeType: judgeType
+    judgeType: judgeType,
+    detectHeaderMatch: detectHeaderMatch,
+    AIGROW_HEADERS: AIGROW_HEADERS,
+    STUDYSAPURI_HEADERS: STUDYSAPURI_HEADERS
   };
 })();

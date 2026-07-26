@@ -203,12 +203,22 @@
         var aigrowRows = GrowthPadLogic.parseCsv(aigrowText);
         db.aigrow = aigrowRows;
         messages.push('RAW_AiGROW を更新しました（' + (aigrowRows.length - 1) + '件）。');
+        var aigrowHeaderMatch = GrowthPadLogic.detectHeaderMatch(aigrowRows[0], GrowthPadLogic.AIGROW_HEADERS);
+        if (aigrowHeaderMatch.missing.length > 0) {
+          messages.push('⚠ Ai GROW CSVで見つからなかった項目: ' + aigrowHeaderMatch.missing.join('、') +
+            '\n  実際の1行目: ' + aigrowRows[0].join(' / '));
+        }
       }
       if (studysapuriFile) {
         var studyText = await readAsTextAutoDetect(studysapuriFile);
         var studyRows = GrowthPadLogic.parseCsv(studyText);
         db.studysapuri = studyRows;
         messages.push('RAW_スタディサプリ を更新しました（' + (studyRows.length - 1) + '件）。');
+        var studyHeaderMatch = GrowthPadLogic.detectHeaderMatch(studyRows[0], GrowthPadLogic.STUDYSAPURI_HEADERS);
+        if (studyHeaderMatch.missing.length > 0) {
+          messages.push('⚠ スタディサプリ CSVで見つからなかった項目: ' + studyHeaderMatch.missing.join('、') +
+            '\n  実際の1行目: ' + studyRows[0].join(' / '));
+        }
       }
 
       db.integrated = GrowthPadLogic.mergeData(db.aigrow, db.studysapuri);
