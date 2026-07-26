@@ -25,7 +25,7 @@
 
     <label for="aigrowFile">Ai GROW 評価結果 CSV</label>
     <input type="file" id="aigrowFile" accept=".csv">
-    <div class="hint">Shift_JIS(CP932) 形式のCSVでもブラウザ側で自動変換します。</div>
+    <div class="hint">UTF-8 / Shift_JIS(CP932) のどちらの文字コードでもブラウザ側で自動判定して読み込みます。</div>
 
     <label for="studysapuriFile">スタディサプリ 学習ログ CSV</label>
     <input type="file" id="studysapuriFile" accept=".csv">
@@ -36,14 +36,25 @@
   </div>
 
   <script>
-    function readAsShiftJisText(file) {
+    // CSVの文字コードはエクスポート元によって UTF-8 / Shift_JIS のどちらもあり得るため、
+    // まず UTF-8 として厳密デコードを試み、失敗したら Shift_JIS にフォールバックする。
+    function readAsTextAutoDetect(file) {
       return new Promise(function (resolve, reject) {
         if (!file) { resolve(null); return; }
         var reader = new FileReader();
         reader.onload = function () {
           try {
-            var decoder = new TextDecoder('shift_jis');
-            resolve(decoder.decode(new Uint8Array(reader.result)));
+            var bytes = new Uint8Array(reader.result);
+            // UTF-8 BOM (EF BB BF) が付いている場合はそれを取り除いて UTF-8 で読む
+            if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+              resolve(new TextDecoder('utf-8').decode(bytes.subarray(3)));
+              return;
+            }
+            try {
+              resolve(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+            } catch (utf8Error) {
+              resolve(new TextDecoder('shift_jis').decode(bytes));
+            }
           } catch (err) {
             reject(err);
           }
@@ -84,11 +95,11 @@
       try {
         var results = [];
         if (aigrowFile) {
-          var aigrowText = await readAsShiftJisText(aigrowFile);
+          var aigrowText = await readAsTextAutoDetect(aigrowFile);
           results.push(await callServer('AiGROW', aigrowText));
         }
         if (studysapuriFile) {
-          var studyText = await readAsShiftJisText(studysapuriFile);
+          var studyText = await readAsTextAutoDetect(studysapuriFile);
           results.push(await callServer('StudySapuri', studyText));
         }
         var summary = results.map(function (r) { return r.message; }).join('\n');
