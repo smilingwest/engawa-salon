@@ -286,6 +286,23 @@ function mergeData_() {
 }
 
 /**
+ * 【診断用】Apps Scriptエディタから直接実行して、getIntegratedPreview() が
+ * 実際に何を返しているかログで確認するための関数。
+ * 上部の関数選択プルダウンで「debugPreview」を選び、実行ボタンを押したあと、
+ * 「表示」→「ログ」（または Ctrl+Enter / Cmd+Enter）でログを確認する。
+ * 動作確認が終わったら削除してよい。
+ */
+function debugPreview() {
+  const result = getIntegratedPreview();
+  Logger.log('header: ' + JSON.stringify(result.header));
+  Logger.log('rows.length: ' + result.rows.length);
+  if (result.rows.length > 0) {
+    Logger.log('rows[0]: ' + JSON.stringify(result.rows[0]));
+  }
+  return result;
+}
+
+/**
  * 管理者画面向け: DB_統合データ の全件を返す（先生・管理者は全生徒を見てよいため）。
  * 生徒用の getStudentData() とは異なり、本人以外のデータも含む点に注意。
  */
