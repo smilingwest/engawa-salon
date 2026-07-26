@@ -13,10 +13,23 @@ const SHEET_RAW_STUDYSAPURI = 'RAW_スタディサプリ';
 const SHEET_DB_INTEGRATED = 'DB_統合データ';
 const SHEET_LOG_REFLECTION = 'LOG_リフレクション';
 
-// Ai GROW CSV で探すヘッダー名（列順が変わっても動くよう名前で検索する）
-const AIGROW_HEADERS = ['メールアドレス', '氏名', 'クラス', '計画性', '思考力', '自己効力感'];
+// Ai GROW CSV で探すヘッダー名（列順が変わっても動くよう名前で検索する）。
+// キーが DB_統合データ 上での項目名、値がCSV側で許容する実際の列名（別名）の候補。
+const AIGROW_HEADERS = {
+  'メールアドレス': ['メールアドレス'],
+  '氏名': ['氏名', '受検者名'],
+  'クラス': ['クラス'],
+  '計画性': ['計画性'],
+  '思考力': ['思考力'],
+  '自己効力感': ['自己効力感']
+};
 // スタディサプリ CSV で探すヘッダー名
-const STUDYSAPURI_HEADERS = ['メールアドレス', '氏名', '今週の学習時間(分)', '講義完了数'];
+const STUDYSAPURI_HEADERS = {
+  'メールアドレス': ['メールアドレス'],
+  '氏名': ['氏名', '名前'],
+  '今週の学習時間(分)': ['今週の学習時間(分)'],
+  '講義完了数': ['講義完了数']
+};
 
 /**
  * Web App エントリポイント。
@@ -92,33 +105,43 @@ function processCsvUpload(type, csvText) {
   };
 }
 
-/** アップロードされたCSVの1行目に、期待するヘッダー名がいくつ見つかったかを調べる。 */
-function detectHeaderMatch_(headerRow, wantedHeaders) {
+/** CSVの1行目の中から、fieldAliases（別名候補の配列）のいずれかが最初に見つかった列番号を返す。見つからなければ -1。 */
+function findColumnIndex_(headerRow, fieldAliases) {
+  for (let i = 0; i < fieldAliases.length; i++) {
+    const idx = headerRow.findIndex(function (h) { return String(h).trim() === fieldAliases[i]; });
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+/**
+ * アップロードされたCSVの1行目に、期待する項目（別名のいずれか）がいくつ見つかったかを調べる。
+ * @param {Array} headerRow
+ * @param {Object} headerAliasMap 項目名 -> 許容する列名候補の配列
+ */
+function detectHeaderMatch_(headerRow, headerAliasMap) {
   const found = [];
   const missing = [];
-  wantedHeaders.forEach(function (name) {
-    const idx = headerRow.findIndex(function (h) { return String(h).trim() === name; });
+  Object.keys(headerAliasMap).forEach(function (canonicalName) {
+    const idx = findColumnIndex_(headerRow, headerAliasMap[canonicalName]);
     if (idx === -1) {
-      missing.push(name);
+      missing.push(canonicalName);
     } else {
-      found.push(name);
+      found.push(canonicalName);
     }
   });
   return { found: found, missing: missing };
 }
 
-/** シートの2次元配列を「メールアドレスキー -> {ヘッダー名: 値}」に変換する。 */
-function sheetRowsToMapByEmail_(rows, wantedHeaders) {
+/** シートの2次元配列を「メールアドレスキー -> {項目名: 値}」に変換する。 */
+function sheetRowsToMapByEmail_(rows, headerAliasMap) {
   const map = {};
   if (!rows || rows.length < 2) return map;
 
   const header = rows[0];
   const colIndex = {};
-  wantedHeaders.forEach(function (name) {
-    const idx = header.findIndex(function (h) {
-      return String(h).trim() === name;
-    });
-    colIndex[name] = idx; // 見つからなければ -1
+  Object.keys(headerAliasMap).forEach(function (canonicalName) {
+    colIndex[canonicalName] = findColumnIndex_(header, headerAliasMap[canonicalName]); // 見つからなければ -1
   });
 
   for (let r = 1; r < rows.length; r++) {
@@ -129,9 +152,9 @@ function sheetRowsToMapByEmail_(rows, wantedHeaders) {
     if (!email) continue;
 
     const record = {};
-    wantedHeaders.forEach(function (name) {
-      const idx = colIndex[name];
-      record[name] = idx >= 0 ? row[idx] : '';
+    Object.keys(headerAliasMap).forEach(function (canonicalName) {
+      const idx = colIndex[canonicalName];
+      record[canonicalName] = idx >= 0 ? row[idx] : '';
     });
     map[email] = record;
   }

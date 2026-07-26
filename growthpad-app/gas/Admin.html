@@ -73,9 +73,17 @@
       });
     }
 
+    // ページ読み込み時と更新後の2回 loadPreview() が呼ばれる可能性があり、
+    // サーバー往復のタイミング次第では古いレスポンスが後から返ってきて
+    // 新しい表示を上書きしてしまうことがある。リクエストIDで最新のものだけ反映する。
+    var previewRequestId = 0;
     function loadPreview() {
+      var requestId = ++previewRequestId;
       google.script.run
-        .withSuccessHandler(renderPreview)
+        .withSuccessHandler(function (preview) {
+          if (requestId !== previewRequestId) return; // 古いレスポンスは無視
+          renderPreview(preview);
+        })
         .withFailureHandler(function (err) {
           console.error(err);
         })
