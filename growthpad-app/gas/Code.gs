@@ -20,6 +20,10 @@
  *     → 学習時間は「視聴時間(秒)」を分に変換して使用する。
  */
 
+// コードを貼り直すたびにここを更新する。Admin.html/Student.html の
+// EXPECTED_VERSION と一致しない場合、貼り付け漏れの可能性が高い。
+const APP_VERSION = '2026-07-26-strengths-v1';
+
 const SHEET_RAW_AIGROW = 'RAW_AiGROW';
 const SHEET_RAW_STUDYSAPURI = 'RAW_スタディサプリ';
 const SHEET_DB_INTEGRATED = 'DB_統合データ';
@@ -60,6 +64,11 @@ function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('Student')
     .setTitle('GrowthPad マイページ')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/** Admin.html/Student.html が、貼り付けたCode.gsのバージョンを確認するために呼ぶ。 */
+function getAppVersion() {
+  return APP_VERSION;
 }
 
 /** データベースとして使うスプレッドシートを取得する。 */

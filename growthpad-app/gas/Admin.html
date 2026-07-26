@@ -21,9 +21,13 @@
     th { color: #777; font-weight: 600; }
     .type-badge { display: inline-block; background: #e5f4ec; color: #256a4a; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; white-space: nowrap; }
     .empty { color: #999; font-size: 13px; }
+    #versionBanner { font-size: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 16px; max-width: 640px; margin-left: auto; margin-right: auto; }
+    #versionBanner.match { background: #f0f0f0; color: #888; }
+    #versionBanner.mismatch { background: #fbe7e7; color: #a33; font-weight: 600; }
   </style>
 </head>
 <body>
+  <div id="versionBanner">バージョン確認中...</div>
   <div class="card">
     <h1>GrowthPad 管理者画面</h1>
     <p class="lead">Ai GROW / スタディサプリ の CSV を選択し、1クリックでデータベースを更新します。</p>
@@ -47,6 +51,30 @@
   </div>
 
   <script>
+    // Admin.html を貼り直すたびに、Code.gs の APP_VERSION と同じ値に更新する。
+    // ここが一致しなければ、Code.gs か Admin.html のどちらかが貼り付け漏れ。
+    var EXPECTED_VERSION = '2026-07-26-strengths-v1';
+
+    function checkVersion() {
+      var el = document.getElementById('versionBanner');
+      google.script.run
+        .withSuccessHandler(function (serverVersion) {
+          if (serverVersion === EXPECTED_VERSION) {
+            el.textContent = 'バージョン: ' + serverVersion + '（Admin.html / Code.gs は同期済み）';
+            el.className = 'match';
+          } else {
+            el.textContent = '⚠ バージョン不一致: この画面(Admin.html)は ' + EXPECTED_VERSION +
+              ' ですが、サーバー(Code.gs)は ' + serverVersion + ' です。Code.gs を最新の内容に貼り直してください。';
+            el.className = 'mismatch';
+          }
+        })
+        .withFailureHandler(function () {
+          el.textContent = '⚠ サーバー(Code.gs)のバージョンを取得できませんでした。Code.gs が古いバージョンのままの可能性があります（getAppVersion 関数が見つかりません）。最新の内容に貼り直してください。';
+          el.className = 'mismatch';
+        })
+        .getAppVersion();
+    }
+
     function renderPreview(preview) {
       var el = document.getElementById('preview');
       if (!preview || !preview.rows || preview.rows.length === 0) {
@@ -169,6 +197,7 @@
       }
     }
 
+    checkVersion();
     loadPreview();
   </script>
 </body>

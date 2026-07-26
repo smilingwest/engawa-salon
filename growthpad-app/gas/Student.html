@@ -26,9 +26,13 @@
     #status, #reflectStatus { margin-top: 12px; padding: 12px; border-radius: 8px; display: none; white-space: pre-wrap; }
     #status.ok, #reflectStatus.ok { display: block; background: #e5f4ec; color: #256a4a; }
     #status.err, #reflectStatus.err { display: block; background: #fbe7e7; color: #a33; }
+    #versionBanner { font-size: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 16px; max-width: 560px; margin-left: auto; margin-right: auto; }
+    #versionBanner.match { background: #f0f0f0; color: #888; }
+    #versionBanner.mismatch { background: #fbe7e7; color: #a33; font-weight: 600; }
   </style>
 </head>
 <body>
+  <div id="versionBanner">バージョン確認中...</div>
   <div class="card">
     <h1>マイ・プロファイル</h1>
     <p class="lead">あなた自身の学びの特性です。他の人のデータは表示されません。</p>
@@ -50,7 +54,29 @@
   </div>
 
   <script>
+    // Student.html を貼り直すたびに、Code.gs の APP_VERSION と同じ値に更新する。
+    var EXPECTED_VERSION = '2026-07-26-strengths-v1';
     var selectedConcentration = 0;
+
+    function checkVersion() {
+      var el = document.getElementById('versionBanner');
+      google.script.run
+        .withSuccessHandler(function (serverVersion) {
+          if (serverVersion === EXPECTED_VERSION) {
+            el.textContent = 'バージョン: ' + serverVersion + '（Student.html / Code.gs は同期済み）';
+            el.className = 'match';
+          } else {
+            el.textContent = '⚠ バージョン不一致: この画面(Student.html)は ' + EXPECTED_VERSION +
+              ' ですが、サーバー(Code.gs)は ' + serverVersion + ' です。Code.gs を最新の内容に貼り直してください。';
+            el.className = 'mismatch';
+          }
+        })
+        .withFailureHandler(function () {
+          el.textContent = '⚠ サーバー(Code.gs)のバージョンを取得できませんでした。Code.gs が古いバージョンのままの可能性があります。最新の内容に貼り直してください。';
+          el.className = 'mismatch';
+        })
+        .getAppVersion();
+    }
 
     function initStars() {
       var stars = document.querySelectorAll('#stars span');
@@ -132,6 +158,7 @@
         .submitReflection({ concentration: selectedConcentration, message: message });
     }
 
+    checkVersion();
     initStars();
     loadProfile();
   </script>
