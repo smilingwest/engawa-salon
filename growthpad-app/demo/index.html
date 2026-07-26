@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrowthPad デモ（ブラウザ動作確認用）</title>
+<style>
+  :root {
+    --main: #3f7d63;
+    --bg: #f4f6f5;
+    --card: #ffffff;
+    --text: #2c2c2c;
+    --muted: #777;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Hiragino Sans', 'Noto Sans JP', 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+  header { background: var(--main); color: #fff; padding: 20px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; opacity: 0.85; font-size: 13px; }
+  .banner { background: #fff7e6; color: #8a6d1a; padding: 10px 24px; font-size: 13px; border-bottom: 1px solid #f0d68a; }
+  nav { display: flex; gap: 8px; padding: 12px 24px; background: #fff; border-bottom: 1px solid #e5e5e5; }
+  nav button { background: none; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--muted); }
+  nav button.active { background: var(--main); color: #fff; }
+  main { padding: 24px; max-width: 720px; margin: 0 auto; }
+  section { display: none; }
+  section.active { display: block; }
+  .card { background: var(--card); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin-top: 0; font-size: 14px; }
+  label { display: block; font-weight: 600; margin: 16px 0 6px; font-size: 14px; }
+  input[type=file], select, textarea { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid #ccc; font-family: inherit; }
+  textarea { min-height: 80px; margin-top: 4px; }
+  .hint { font-size: 12px; color: #999; margin-top: 4px; }
+  button.primary { margin-top: 20px; background: var(--main); color: #fff; border: none; border-radius: 8px; padding: 12px 20px; font-size: 15px; cursor: pointer; }
+  button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #adminStatus, #reflectStatus { margin-top: 16px; padding: 12px; border-radius: 8px; display: none; white-space: pre-wrap; font-size: 13px; }
+  .ok { display: block !important; background: #e5f4ec; color: #256a4a; }
+  .err { display: block !important; background: #fbe7e7; color: #a33; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; }
+  th { color: var(--muted); font-weight: 600; }
+  .type-badge { display: inline-block; background: #e5f4ec; color: #256a4a; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .profile-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+  .profile-row:last-child { border-bottom: none; }
+  .profile-row .label { color: var(--muted); }
+  .profile-row .value { font-weight: 600; }
+  .stars { font-size: 28px; letter-spacing: 6px; cursor: pointer; }
+  .stars span { color: #ddd; }
+  .stars span.active { color: #f0a72e; }
+  .quadrant { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+  .quadrant div { background: #f8f9f8; border-radius: 8px; padding: 10px; font-size: 12px; }
+  .quadrant .qcount { font-size: 20px; font-weight: 700; color: var(--main); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GrowthPad デモ</h1>
+  <p>Ai GROW（非認知）× スタディサプリ（認知・学習）データ統合アプリ</p>
+</header>
+<div class="banner">
+  これはブラウザだけで動くデモです。実データは端末内の localStorage に保存され、外部には送信されません。
+  本番は Google Apps Script + スプレッドシートで動作します（<code>../gas/</code> フォルダ参照）。
+</div>
+
+<nav>
+  <button id="tabAdminBtn" class="active" onclick="showTab('admin')">管理者・先生用</button>
+  <button id="tabStudentBtn" onclick="showTab('student')">生徒用</button>
+</nav>
+
+<main>
+  <section id="tabAdmin" class="active">
+    <div class="card">
+      <h2>データ更新画面</h2>
+      <p class="lead">Ai GROW / スタディサプリ の CSV を選択し、1クリックでデータベースを更新します。</p>
+
+      <label for="aigrowFile">Ai GROW 評価結果 CSV</label>
+      <input type="file" id="aigrowFile" accept=".csv">
+      <div class="hint">Shift_JIS(CP932) のCSVでもブラウザ側で自動変換します。サンプル: sample-data/aigrow_sample.csv</div>
+
+      <label for="studysapuriFile">スタディサプリ 学習ログ CSV</label>
+      <input type="file" id="studysapuriFile" accept=".csv">
+      <div class="hint">サンプル: sample-data/studysapuri_sample.csv</div>
+
+      <button class="primary" id="updateBtn" onclick="runUpdate()">データ更新実行</button>
+      <div id="adminStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>DB_統合データ（プレビュー）</h2>
+      <p class="lead">名寄せ済みマスターデータ。実運用ではこのシートを Looker Studio が参照します。</p>
+      <div class="quadrant" id="quadrantSummary"></div>
+      <div style="overflow-x:auto">
+        <table id="dbTable">
+          <thead><tr><th>氏名</th><th>クラス</th><th>自己効力感</th><th>学習時間(分)</th><th>タイプ判定</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tabStudent">
+    <div class="card">
+      <label for="studentSelect">ログインユーザー（本人のみ表示される想定のシミュレーション）</label>
+      <select id="studentSelect" onchange="renderStudentProfile()"></select>
+    </div>
+
+    <div class="card">
+      <h2>マイ・プロファイル</h2>
+      <p class="lead">あなた自身の学びの特性です。他の人のデータは表示されません。</p>
+      <div id="profile">データがありません。まず管理者画面でCSVを取り込んでください。</div>
+    </div>
+
+    <div class="card">
+      <h2>今日の振り返り</h2>
+      <p class="lead">学習が終わったら1分で入力しましょう。</p>
+      <div>集中度</div>
+      <div class="stars" id="stars">
+        <span data-value="1">★</span><span data-value="2">★</span><span data-value="3">★</span><span data-value="4">★</span><span data-value="5">★</span>
+      </div>
+      <div style="margin-top:12px">工夫した点</div>
+      <textarea id="message" placeholder="今日の学習で工夫したこと・気づいたことを書いてみましょう"></textarea>
+      <button class="primary" id="submitBtn" onclick="submitReflection()">送信する</button>
+      <div id="reflectStatus"></div>
+      <div id="reflectionLog"></div>
+    </div>
+  </section>
+</main>
+
+<script src="logic.js"></script>
+<script>
+  var STORAGE_KEY_DB = 'growthpad_demo_db';
+  var STORAGE_KEY_LOG = 'growthpad_demo_reflection_log';
+  var selectedConcentration = 0;
+
+  function showTab(name) {
+    document.getElementById('tabAdmin').classList.toggle('active', name === 'admin');
+    document.getElementById('tabStudent').classList.toggle('active', name === 'student');
+    document.getElementById('tabAdminBtn').classList.toggle('active', name === 'admin');
+    document.getElementById('tabStudentBtn').classList.toggle('active', name === 'student');
+    if (name === 'student') {
+      populateStudentSelect();
+      renderStudentProfile();
+      renderReflectionLog();
+    }
+  }
+
+  function readAsShiftJisText(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) { resolve(null); return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var decoder = new TextDecoder('shift_jis');
+          resolve(decoder.decode(new Uint8Array(reader.result)));
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = function () { reject(reader.error); };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function loadDb() {
+    var raw = localStorage.getItem(STORAGE_KEY_DB);
+    return raw ? JSON.parse(raw) : { aigrow: [], studysapuri: [], integrated: [] };
+  }
+  function saveDb(db) {
+    localStorage.setItem(STORAGE_KEY_DB, JSON.stringify(db));
+  }
+
+  async function runUpdate() {
+    var btn = document.getElementById('updateBtn');
+    var aigrowFile = document.getElementById('aigrowFile').files[0];
+    var studysapuriFile = document.getElementById('studysapuriFile').files[0];
+    var statusEl = document.getElementById('adminStatus');
+
+    if (!aigrowFile && !studysapuriFile) {
+      statusEl.textContent = '少なくとも1つのCSVファイルを選択してください。';
+      statusEl.className = 'err';
+      return;
+    }
+
+    btn.disabled = true;
+    statusEl.textContent = 'データ更新中...';
+    statusEl.className = 'ok';
+
+    try {
+      var db = loadDb();
+      var messages = [];
+
+      if (aigrowFile) {
+        var aigrowText = await readAsShiftJisText(aigrowFile);
+        var aigrowRows = GrowthPadLogic.parseCsv(aigrowText);
+        db.aigrow = aigrowRows;
+        messages.push('RAW_AiGROW を更新しました（' + (aigrowRows.length - 1) + '件）。');
+      }
+      if (studysapuriFile) {
+        var studyText = await readAsShiftJisText(studysapuriFile);
+        var studyRows = GrowthPadLogic.parseCsv(studyText);
+        db.studysapuri = studyRows;
+        messages.push('RAW_スタディサプリ を更新しました（' + (studyRows.length - 1) + '件）。');
+      }
+
+      db.integrated = GrowthPadLogic.mergeData(db.aigrow, db.studysapuri);
+      saveDb(db);
+      messages.push('DB_統合データ を再生成しました（' + db.integrated.length + '件）。');
+
+      statusEl.textContent = messages.join('\n');
+      statusEl.className = 'ok';
+      renderDbTable();
+    } catch (err) {
+      statusEl.textContent = 'エラー: ' + (err && err.message ? err.message : err);
+      statusEl.className = 'err';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderDbTable() {
+    var db = loadDb();
+    var tbody = document.querySelector('#dbTable tbody');
+    tbody.innerHTML = '';
+    var counts = {};
+    db.integrated.forEach(function (row) {
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escapeHtml(row['氏名']) + '</td>' +
+        '<td>' + escapeHtml(row['クラス']) + '</td>' +
+        '<td>' + escapeHtml(row['自己効力感']) + '</td>' +
+        '<td>' + escapeHtml(row['学習時間']) + '</td>' +
+        '<td><span class="type-badge">' + escapeHtml(row['タイプ判定']) + '</span></td>';
+      tbody.appendChild(tr);
+      counts[row['タイプ判定']] = (counts[row['タイプ判定']] || 0) + 1;
+    });
+
+    var quadEl = document.getElementById('quadrantSummary');
+    quadEl.innerHTML = '';
+    Object.keys(counts).forEach(function (type) {
+      var div = document.createElement('div');
+      div.innerHTML = '<div class="qcount">' + counts[type] + '名</div>' + type;
+      quadEl.appendChild(div);
+    });
+  }
+
+  function populateStudentSelect() {
+    var db = loadDb();
+    var select = document.getElementById('studentSelect');
+    var current = select.value;
+    select.innerHTML = '';
+    db.integrated.forEach(function (row) {
+      var opt = document.createElement('option');
+      opt.value = row['メールアドレス'];
+      opt.textContent = row['氏名'] + '（' + row['メールアドレス'] + '）';
+      select.appendChild(opt);
+    });
+    if (current) select.value = current;
+  }
+
+  function renderStudentProfile() {
+    var db = loadDb();
+    var email = document.getElementById('studentSelect').value;
+    var el = document.getElementById('profile');
+    var row = db.integrated.find(function (r) { return r['メールアドレス'] === email; });
+
+    if (!row) {
+      el.innerHTML = 'データがありません。まず管理者画面でCSVを取り込んでください。';
+      return;
+    }
+    el.innerHTML =
+      '<div class="profile-row"><span class="label">氏名</span><span class="value">' + escapeHtml(row['氏名']) + '</span></div>' +
+      '<div class="profile-row"><span class="label">クラス</span><span class="value">' + escapeHtml(row['クラス']) + '</span></div>' +
+      '<div class="profile-row"><span class="label">学びタイプ</span><span class="value"><span class="type-badge">' + escapeHtml(row['タイプ判定']) + '</span></span></div>' +
+      '<div class="profile-row"><span class="label">非認知スコア（自己効力感）</span><span class="value">' + escapeHtml(row['自己効力感']) + '</span></div>' +
+      '<div class="profile-row"><span class="label">今週の学習時間</span><span class="value">' + escapeHtml(row['学習時間']) + ' 分</span></div>';
+  }
+
+  function initStars() {
+    var stars = document.querySelectorAll('#stars span');
+    stars.forEach(function (star) {
+      star.addEventListener('click', function () {
+        selectedConcentration = Number(star.getAttribute('data-value'));
+        stars.forEach(function (s) {
+          s.classList.toggle('active', Number(s.getAttribute('data-value')) <= selectedConcentration);
+        });
+      });
+    });
+  }
+
+  function submitReflection() {
+    var statusEl = document.getElementById('reflectStatus');
+    var email = document.getElementById('studentSelect').value;
+    var message = document.getElementById('message').value;
+
+    if (!email) {
+      statusEl.textContent = 'ユーザーが選択されていません。';
+      statusEl.className = 'err';
+      return;
+    }
+    if (!selectedConcentration) {
+      statusEl.textContent = '集中度を選択してください。';
+      statusEl.className = 'err';
+      return;
+    }
+
+    var log = JSON.parse(localStorage.getItem(STORAGE_KEY_LOG) || '[]');
+    log.push({
+      timestamp: new Date().toISOString(),
+      email: email,
+      concentration: selectedConcentration,
+      message: message
+    });
+    localStorage.setItem(STORAGE_KEY_LOG, JSON.stringify(log));
+
+    statusEl.textContent = '振り返りを送信しました！お疲れさまでした。';
+    statusEl.className = 'ok';
+    document.getElementById('message').value = '';
+    renderReflectionLog();
+  }
+
+  function renderReflectionLog() {
+    var email = document.getElementById('studentSelect').value;
+    var log = JSON.parse(localStorage.getItem(STORAGE_KEY_LOG) || '[]');
+    var mine = log.filter(function (l) { return l.email === email; });
+    var el = document.getElementById('reflectionLog');
+    if (mine.length === 0) { el.innerHTML = ''; return; }
+    el.innerHTML = '<h3 style="font-size:14px;margin-top:20px">これまでの振り返り（LOG_リフレクション）</h3>' +
+      mine.slice().reverse().map(function (l) {
+        return '<div class="profile-row"><span class="label">' + new Date(l.timestamp).toLocaleString('ja-JP') + '</span>' +
+          '<span class="value">' + '★'.repeat(l.concentration) + ' ' + escapeHtml(l.message) + '</span></div>';
+      }).join('');
+  }
+
+  function escapeHtml(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  initStars();
+  renderDbTable();
+  populateStudentSelect();
+</script>
+</body>
+</html>
